@@ -41,8 +41,8 @@ a_forecast = api.model(
         'start': fields.Integer(
             description='The start point of our predictions'), 'end': fields.Integer(
                 description='The end point of our predictions'), 'forecast_range': fields.Integer(
-                    description='The number of points to predict at each step'), 'period': fields.Integer(
-                        description='The seasonal parameter or set of seasonal parameters'), 'data': fields.List(
+                    description='The number of points to predict at each step'), 'period': fields.List(fields.Integer(
+                        description='The seasonal parameter or set of seasonal parameters')), 'data': fields.List(
                             fields.String(
                                 description='The provided list with the time series data or string which represents the path for the data')), 'locale': fields.String(
                                     description='The corresponding locale, None if it does not exist', default='None', required=False), 'api_key': fields.String(
@@ -60,6 +60,35 @@ a_timeserie = api.model(
                         description='The seasonal parameter'), 'locale': fields.String(
                             description='The corresponding locale, None if it does not exist', default='None', required=False), 'api_key': fields.String(
                                 description='API key')})
+
+
+# Set up the structure of the model for the Correlate Method
+# ----------------------------------------------------------
+a_correlate = api.model(
+    'Correlate input values', {
+        'data': fields.List(
+            fields.List(
+                fields.String(
+                description='The provided list with the time series data or string which represents the path for the data'))),
+        'start': fields.Integer(
+            description='The start point of our calculations'),
+        'window_size': fields.Integer(
+                description='The length of the window'), 
+        'step_size': fields.Integer(
+                    description='The length of each step'),
+        'steps': fields.Integer(
+                        description='Number of steps'),
+        'correlation_method': fields.String(
+                        description='Methods of correlation {‘pearson’, ‘kendall’, ‘spearman’} s'),
+        
+        'locale': fields.String(
+                                    description='The corresponding locale, None if it does not exist', default='None', required=False),
+        
+        
+        'api_key': fields.String(
+                                        description='API key')})
+
+
 
 
 # Set up logging system
@@ -281,7 +310,7 @@ class Forecast(Resource):
 
         predictions, best_configurations: Lists of lists
         -----------
-            A list containing the prediction sets accompanied by a list which contains the corresponding configuration sets (seasonality, trend type, seasonal type).Each prediction set i within the [start,end] range is a list containing M=forecast_range values, which are the the forecasted values starting from point i.Each configuration set i within the [start, end] range is a list containing three other lists with the best parameters (period, type of trend component, type of seasonal component) calculated by our optimisation algorithm for each prediction set.
+            A list containing the prediction sets accompanied by a list which contains the corresponding configuration sets (seasonality, trend type, seasonal type).Each prediction set i within the [start,end] range is a list containing M=forecast_range values, which are the the forecasted values starting from point i.Each configuration set i within the [start, end] range is a list containing four other lists with the best parameters (period, type of trend component, type of seasonal component) calculated by our optimisation algorithm for each prediction set as well as the best configuration's rmse z-score. Z-score metric gives us an intuition about how better Holt-Winters works when using the best configuration set instead of all the other possible combinations of the provided periods and trend - seasonal type.
 
         """
         # API key check
@@ -322,10 +351,123 @@ class Forecast(Resource):
                 # Convert data into floats
                 data = np.array(data, dtype=np.float32)
 
-            predictions, seasonality, trend_type, seasonal_type = forecast(
+            predictions, seasonality, trend_type, seasonal_type, z_score = forecast(
                 data, start, end, forecast_range, period)
             return {'predictions': predictions, 'best_configurations': {
-                'seasonality': seasonality, 'trend_type': trend_type, 'seasonal_type': seasonal_type}}, 201
+                'seasonality': seasonality, 'trend_type': trend_type, 'seasonal_type': seasonal_type, 'z_score':z_score}}, 201
+        else:
+            print("Wrong api key")
+            
+          
+        
+# Initialise the Correlate Class
+# -----------------------------
+@name_space.route('/correlate')
+class Correlate(Resource):
+
+    @api.expect(a_correlate)
+    def post(self):
+        """ Time series correlations
+
+        Description:
+        -----------
+        This method computes pairwise correlations in a set of given time series within a sliding time window. The service takes as input a list of different time series as well as the start, the window size, the step size, the number of steps and the corresponding locale if applicable. After providing the corresponding inputs, for each step i our service computes and returns the corresponding correlation matrix.
+
+        This implementation uses the "pandas.DataFrame.corr" from the pandas library.
+
+        ----------
+
+        Parameters:
+        -----------
+
+        data: List of lists
+        -----
+              The provided list with the time series data.
+
+        start: Integer
+        -----
+            The start point of our calculations, assuming that the first timestamp of each time series is 0.
+
+        window_size: Integer
+        -----------
+            The length of the window.
+
+        step_size: Integer
+        ---------
+            The length of each step.
+
+        steps: Integer
+        -----
+            Number of steps.
+            
+        correlation_method: String
+        ------------------
+            Methods of correlation {‘pearson’, ‘kendall’, ‘spearman’} 
+            
+        locale: String
+        -----
+            The corresponding locale or 'None' to use the default.
+
+        api_key: String
+        -----
+            API user's key.
+
+        ------
+
+        Returns:
+        -------
+
+        correlations: Lists of lists
+        ------------
+            A list containing the correlation matrices.
+        """
+        # API key check
+        k = api.payload['api_key']
+        if k in keys:
+
+            # Logging request
+            ns1.logger.info('- Correlate Request')
+            ns1.logger.info(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            ns1.logger.info(api.payload)
+            
+            # Parsing data
+            data = api.payload['data']
+            start = api.payload['start']
+            window_size = api.payload['window_size']
+            step_size = api.payload['step_size']
+            steps = api.payload['steps']
+            correlation_method = api.payload['correlation_method']
+            l = api.payload['locale']
+            
+            final_data = []
+            for d in data:
+                # Check whether we got a sftp request or raw data
+                dt = []
+                if isinstance(d, str):
+                    print('sftp')
+                    with pysftp.Connection(host=hostname, username=username, password=password, private_key=".ppk", cnopts=cnopts) as sftp:
+                        with sftp.cd(path):
+                            with sftp.open(d) as remote_file:
+                                i = 0
+                                for line in remote_file:
+                                    if i > 0:
+                                        x = line.split(",")
+                                        dt.append(x[5])
+                                    i = i + 1
+                    d = dt
+
+                # Locale manipulation
+                if l != "None":
+                    locale.setlocale(locale.LC_ALL, l)
+                    d = [locale.atof(item) for item in d]
+                else:
+                    # Convert data into floats
+                    d = np.array(d, dtype=np.float32)
+                    
+                final_data.append(d)
+            
+            correlations = correlate(final_data, start, window_size, step_size, steps,correlation_method)
+            return {'correlations': correlations}, 201
         else:
             print("Wrong api key")
 
