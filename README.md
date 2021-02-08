@@ -36,6 +36,15 @@ This method returns all the available stock data files on the SFTP server.
 
 <br>
 <br>
+
+#### Correlate
+
+This method computes pairwise correlations in a set of given time series within a sliding time window. The service takes as input a list of different time series as well as the start, the window size, the step size, the number of steps and the corresponding locale if applicable. After providing the corresponding inputs, for each step i our service computes and returns the corresponding correlation matrix.
+
+This implementation uses the "pandas.DataFrame.corr" from the pandas library.
+
+<br>
+<br>
 <br>
 
 ### Usage

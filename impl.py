@@ -43,7 +43,7 @@ def forecast(data, start, end, forecast_range, period):
         Best seasonal type
     float:
         z-score of the best config
-        
+
 
     """
 
@@ -74,9 +74,9 @@ def forecast(data, start, end, forecast_range, period):
 
         best_config, z_score = grid_search_HWES(
             cfg_list, d.iloc[0:i - forecast_range], d.iloc[i - forecast_range:i], forecast_range)
-     
-        t,s,p = best_config
-        
+
+        t, s, p = best_config
+
         # Train split
         df_train = d.iloc[0:i + 1]
 
@@ -94,8 +94,6 @@ def forecast(data, start, end, forecast_range, period):
         z_scores.append(z_score)
 
     return predictions, seasonality, trend_type, seasonal_type, z_scores
-
-
 
 
 # G R I D  S E A R C H -  O P T I M I S A T I O N  F U N C T I O N S
@@ -116,8 +114,8 @@ def holt_winters_configs(seasonal=[None]):
     """
     models = list()
     # define config lists
-    t_params = ['add', 'mul',None]
-    s_params = ['add', 'mul',None]
+    t_params = ['add', 'mul', None]
+    s_params = ['add', 'mul', None]
     p_params = seasonal
     # create config instances
     for t in t_params:
@@ -157,17 +155,17 @@ def grid_search_HWES(cfg_list, train, test, forecast_range):
     for i in range(len(cfg_list)):
         try:
             t, s, p = cfg_list[i]
-            print('trend_type: '+t)
-            print('seasonal_type: '+s)
-            print('period: '+str(p))
+            print('trend_type: ' + t)
+            print('seasonal_type: ' + s)
+            print('period: ' + str(p))
             model = HWES(train, seasonal_periods=p, trend=t, seasonal=s)
             fitted = model.fit()
             print(fitted)
             forecasted_values = fitted.forecast(steps=forecast_range)
             print(forecasted_values)
             rmse = np.sqrt(mean_squared_error(test, forecasted_values))
-            
-            print('rmse: '+str(rmse))
+
+            print('rmse: ' + str(rmse))
             scores.append(rmse)
             if rmse < best_RMSE:
                 best_RMSE = rmse
@@ -179,13 +177,11 @@ def grid_search_HWES(cfg_list, train, test, forecast_range):
     mean = np.mean(scores)
     std = np.std(scores)
     z_score = (best_RMSE - mean) / std
-   
+
     return best_config, z_score
 
 
-
-
-# C O R R E L A T I O N S - F U N C T I O N 
+# C O R R E L A T I O N S - F U N C T I O N
 # ------------------------------------------
 
 def correlate(data, start, window_size, step_size, steps, correlation_method):
@@ -206,41 +202,41 @@ def correlate(data, start, window_size, step_size, steps, correlation_method):
     steps: int
         Number of steps
     correlation_method: String
-        Methods of correlation {‘pearson’, ‘kendall’, ‘spearman’} 
-        
+        Methods of correlation {‘pearson’, ‘kendall’, ‘spearman’}
+
 
     Returns
     -------
     lists of lists:
-        A list containing the correlation matrices 
+        A list containing the correlation matrices
     """
 
     # Convert data into pandas dataframe form
     d = pd.DataFrame(data)
     d = d.transpose()
-    
+
     # Initialise the array that holds the correlation matrices for each window
     correlations = []
-    
+
     # Iterate through the selected windows
     s = start
-    
-    for i in range(0,steps):
-        m = d[s:s+window_size]
-        
+
+    for i in range(0, steps):
+        m = d[s:s + window_size]
+
         # Calculate correlation matrix
-        if correlation_method in ['pearson','kendall','spearman']:
-            m= m.corr(correlation_method)
+        if correlation_method in ['pearson', 'kendall', 'spearman']:
+            m = m.corr(correlation_method)
         else:
-            m= m.corr() 
-         
+            m = m.corr()
+
         # Transform correlation matrix from pandas to list
         m = m.values.tolist()
-        
+
         # Append correlation matrix into correlations
         correlations.append(m)
-        
+
         # Update start index
         s = s + step_size
-        
-    return correlations   
+
+    return correlations

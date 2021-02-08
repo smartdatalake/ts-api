@@ -20,7 +20,6 @@ cnopts = pysftp.CnOpts()
 cnopts.hostkeys = None
 
 
-
 # A P P L I C A T I O N   U S E R   I N T E R F A C E
 # ---------------------------------------------------
 
@@ -69,26 +68,24 @@ a_correlate = api.model(
         'data': fields.List(
             fields.List(
                 fields.String(
-                description='The provided list with the time series data or string which represents the path for the data'))),
+                    description='The provided list with the time series data or string which represents the path for the data'))),
         'start': fields.Integer(
             description='The start point of our calculations'),
         'window_size': fields.Integer(
-                description='The length of the window'), 
+            description='The length of the window'),
         'step_size': fields.Integer(
-                    description='The length of each step'),
+            description='The length of each step'),
         'steps': fields.Integer(
-                        description='Number of steps'),
+            description='Number of steps'),
         'correlation_method': fields.String(
-                        description='Methods of correlation {‘pearson’, ‘kendall’, ‘spearman’} s'),
-        
+            description='Methods of correlation {‘pearson’, ‘kendall’, ‘spearman’} s'),
+
         'locale': fields.String(
-                                    description='The corresponding locale, None if it does not exist', default='None', required=False),
-        
-        
+            description='The corresponding locale, None if it does not exist', default='None', required=False),
+
+
         'api_key': fields.String(
-                                        description='API key')})
-
-
+            description='API key')})
 
 
 # Set up logging system
@@ -353,13 +350,12 @@ class Forecast(Resource):
 
             predictions, seasonality, trend_type, seasonal_type, z_score = forecast(
                 data, start, end, forecast_range, period)
-            return {'predictions': predictions, 'best_configurations': {
-                'seasonality': seasonality, 'trend_type': trend_type, 'seasonal_type': seasonal_type, 'z_score':z_score}}, 201
+            return {'predictions': predictions, 'best_configurations': {'seasonality': seasonality,
+                                                                        'trend_type': trend_type, 'seasonal_type': seasonal_type, 'z_score': z_score}}, 201
         else:
             print("Wrong api key")
-            
-          
-        
+
+
 # Initialise the Correlate Class
 # -----------------------------
 @name_space.route('/correlate')
@@ -399,11 +395,11 @@ class Correlate(Resource):
         steps: Integer
         -----
             Number of steps.
-            
+
         correlation_method: String
         ------------------
-            Methods of correlation {‘pearson’, ‘kendall’, ‘spearman’} 
-            
+            Methods of correlation {‘pearson’, ‘kendall’, ‘spearman’}
+
         locale: String
         -----
             The corresponding locale or 'None' to use the default.
@@ -429,7 +425,7 @@ class Correlate(Resource):
             ns1.logger.info('- Correlate Request')
             ns1.logger.info(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             ns1.logger.info(api.payload)
-            
+
             # Parsing data
             data = api.payload['data']
             start = api.payload['start']
@@ -438,7 +434,7 @@ class Correlate(Resource):
             steps = api.payload['steps']
             correlation_method = api.payload['correlation_method']
             l = api.payload['locale']
-            
+
             final_data = []
             for d in data:
                 # Check whether we got a sftp request or raw data
@@ -463,10 +459,16 @@ class Correlate(Resource):
                 else:
                     # Convert data into floats
                     d = np.array(d, dtype=np.float32)
-                    
+
                 final_data.append(d)
-            
-            correlations = correlate(final_data, start, window_size, step_size, steps,correlation_method)
+
+            correlations = correlate(
+                final_data,
+                start,
+                window_size,
+                step_size,
+                steps,
+                correlation_method)
             return {'correlations': correlations}, 201
         else:
             print("Wrong api key")
