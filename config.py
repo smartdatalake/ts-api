@@ -1,6 +1,6 @@
 # A P I - K E Y S
 # ---------------
-keys = ['XXXX', 'XXXX', 'XXXX']
+keys = ['XXXX']
 
 
 # S F T P - S E R V E R
