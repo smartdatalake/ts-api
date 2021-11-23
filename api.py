@@ -647,7 +647,7 @@ class Decompose(Resource):
 class Catalog(Resource):
 
     @api.expect(a_catalog)
-    def get(self):
+    def post(self):
         """ Return the available data files.
 
         Description:
